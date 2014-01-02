@@ -1,5 +1,6 @@
 1. First stage. There wil be a class which make calculation using hemiltonian in form of sum of matrix in COO format 
 with time-dependent coefficients. All other operators must have the same form (such as operator of conection with the bath,
-or operators average of which we want to calculate)
+or operators average of which we want to calculate). Also there will be a class containing device-dependened function - abstract class
+, and a child - test class for cuda.
 
 
