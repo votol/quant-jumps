@@ -15,23 +15,21 @@
 #define __storage_h_
 #include "defs.h"
 #include "complex.h"
-class Object;
-class Storage;
 
 class Vector;
 class Oper;
 
 class Matrix_COO;
 
-class Dev;
+class Device;
 
-class Dev
+class Device
     {
     public:
-        Dev()
+        Device()
             {
             }
-        ~Dev()
+        ~Device()
             {
             }
         virtual long int vector_load(Vector *)=0;
@@ -40,88 +38,14 @@ class Dev
     };
 
 
-class Object
-    {
-    public:
-        Object(int d,Dev *de):dim(d),device(de)
-            {
-            }
-        virtual ~Object()
-            {
-            }
-        virtual long int load(void)=0;
-        void * pot;
-        int dim;
-        Dev *device;
-    };
-
-class Storage
-    {
-        std::vector<Object *> objs;
-        bool is_load;
-        int col_el;
-        Dev *device;
-    public:
-        std::vector<long int> ptrs;
-        Storage(Dev *d):is_load(false),col_el(0),device(d)
-            {
-            
-            }
-        ~Storage()
-            {
-            if(is_load==true)
-                {
-                free();
-                }
-            for(int i=0;i<col_el;i++)
-                {
-                delete objs[i];
-                }
-            }
-        template<class T> 
-        int add_object(int dim)
-            {
-            T *per=new T(dim,device);
-            objs.push_back(per);
-            ptrs.push_back(0);
-            col_el++;
-            return col_el-1;
-            }
-        template<class T>
-        T& item(int in)
-            {
-            return *((T *)(objs[in]->pot));
-            }
-        void load(void)
-            {
-            for(int i=0;i<col_el;i++)
-                {
-                ptrs[i]=objs[i]->load();
-                }
-            is_load=true;
-            }
-        void free(void)
-            {
-            if(is_load==true)
-                is_load=false;
-            else
-                return;
-            for(int i=0;i<col_el;i++)
-                {
-                device->release(ptrs[i]);
-                ptrs[i]=0;
-                }
-            }
-    };
-
-class Vector:public Object
+class Vector
     {
         std::vector<complex<TYPE> > v;
+        unsigned int dim;
     public:
-        Vector(int d,Dev *de):Object(d,de)
+        Vector(int d):dim(d)
             {
             v.resize(d,complex<TYPE>(0,0));
-            pot=(void *)this;
             }
         ~Vector()
             {
@@ -130,14 +54,13 @@ class Vector:public Object
             {
             return v[in];
             }
-        long int load(void)
+        unsigned int & size()
             {
-            return device->vector_load(this);
+            return dim;
             }
-        
     };
 
-class Oper:public Object
+class Oper
     {
         struct ms_list
             {
@@ -148,30 +71,25 @@ class Oper:public Object
         ms_list *last;
         ms_list *teck;
         unsigned int num;
+        int dim;
         void add_matr(void);
     public:
-        Oper(int d,Dev *de):Object(d,de)
+        Oper(int d):dim(d)
             {
             first=NULL;
             last=NULL;
             num=0;
-            pot=(void *)this;
             }
         ~Oper();
         Matrix_COO & operator [](const unsigned int &in);
-        int size()
+        unsigned int& size()
             {
             return num;
-            }
-        long int load(void)
-            {
-            return device->matrix_load(this);
             }
     };
 
 class Matrix_COO
     {
-    public:
         class key
             {
             public:
@@ -193,13 +111,13 @@ class Matrix_COO
                     }
             };
         friend bool operator <(const key &a,const key &b);
-    private:
         std::map<key,complex<TYPE> > mat;
         int dim;
     public:
+        typedef std::map<key,complex<TYPE> >::iterator iterator; 
         Matrix_COO(){};
         Matrix_COO(int d):dim(d){};
-        ~Matrix_COO(){std::cout<<"a"<<std::endl;};
+        ~Matrix_COO(){};
         void set_nonzero(const int &i,const int &j,const complex<TYPE> &val)
             {
             if(val.__re!=0||val.__im!=0)    
@@ -209,11 +127,11 @@ class Matrix_COO
             {
             mat.erase(key(i,j));
             }
-        std::map<key,complex<TYPE> >::iterator begin()
+        iterator begin()
             {
             return mat.begin();
             }
-        std::map<key,complex<TYPE> >::iterator end()
+        iterator end()
             {
             return mat.end();
             }
@@ -271,7 +189,6 @@ Matrix_COO & Oper::operator [](const unsigned int &in)
 
 Oper::~Oper()
     {
-    std::cout<<"Oper"<<std::endl;
     while(first!=NULL)
         {
         teck=first;
