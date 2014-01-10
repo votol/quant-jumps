@@ -13,6 +13,10 @@
 */
 #ifndef __storage_h_
 #define __storage_h_
+#include <vector>
+#include <map>
+#include <iterator>
+#include <iostream>
 #include "defs.h"
 #include "complex.h"
 
@@ -32,9 +36,13 @@ class Device
         ~Device()
             {
             }
-        virtual long int vector_load(Vector *)=0;
-        virtual long int matrix_load(Oper *)=0;
-        virtual void release(long int)=0;
+        virtual long int vector_load(const Vector *)=0;
+        virtual long int matrix_load(const Oper *)=0;
+        virtual void release(long int &)=0;
+        
+        virtual void matrix_vec_mul(const long int &,const long int &,const long int &)=0;            
+        
+        virtual void get_data(const long int &, void *,const unsigned int & )=0;
     };
 
 
@@ -43,21 +51,10 @@ class Vector
         std::vector<complex<TYPE> > v;
         unsigned int dim;
     public:
-        Vector(int d):dim(d)
-            {
-            v.resize(d,complex<TYPE>(0,0));
-            }
-        ~Vector()
-            {
-            }
-        complex<TYPE> & operator [](int in)
-            {
-            return v[in];
-            }
-        unsigned int & size()
-            {
-            return dim;
-            }
+        Vector(int d);
+        ~Vector();
+        complex<TYPE> & operator [](int in);
+        unsigned int & size();
     };
 
 class Oper
@@ -72,20 +69,13 @@ class Oper
         ms_list *teck;
         unsigned int num;
         int dim;
+        int num_t;
         void add_matr(void);
     public:
-        Oper(int d):dim(d)
-            {
-            first=NULL;
-            last=NULL;
-            num=0;
-            }
+        Oper(int d,int nt);
         ~Oper();
         Matrix_COO & operator [](const unsigned int &in);
-        unsigned int& size()
-            {
-            return num;
-            }
+        unsigned int& size();
     };
 
 class Matrix_COO
@@ -95,106 +85,27 @@ class Matrix_COO
             public:
                 int col;
                 int row;
-                key():col(0),row(0){};
-                key(const int &i,const int &j):col(i),row(j){};
-                key(const key &in)
-                    {
-                    col=in.col;
-                    row=in.row;
-                    }
-                ~key(){};
-                key & operator =(const key &in)
-                    {
-                    col=in.col;
-                    row=in.row;
-                    return *this;
-                    }
+                key();
+                key(const int &i,const int &j);
+                key(const key &in);
+                ~key();
+                key & operator =(const key &in);
             };
         friend bool operator <(const key &a,const key &b);
         std::map<key,complex<TYPE> > mat;
-        int dim;
+        unsigned int dim;
+        unsigned int num_t;
+        complex<TYPE> *coe_t;
     public:
         typedef std::map<key,complex<TYPE> >::iterator iterator; 
-        Matrix_COO(){};
-        Matrix_COO(int d):dim(d){};
-        ~Matrix_COO(){};
-        void set_nonzero(const int &i,const int &j,const complex<TYPE> &val)
-            {
-            if(val.__re!=0||val.__im!=0)    
-                mat[key(i,j)]=val;
-            }
-        void set_zero(const int &i,const int &j)
-            {
-            mat.erase(key(i,j));
-            }
-        iterator begin()
-            {
-            return mat.begin();
-            }
-        iterator end()
-            {
-            return mat.end();
-            }
+        Matrix_COO();
+        Matrix_COO(unsigned int d,unsigned int nt);
+        ~Matrix_COO();
+        void set_nonzero(const int &i,const int &j,const complex<TYPE> &val);
+        void set_zero(const int &i,const int &j);
+        iterator begin();
+        iterator end();
+        complex<TYPE> & operator [](unsigned int i);
     };
-bool operator<(const Matrix_COO::key &a,const Matrix_COO::key &b)
-    {
-    if(a.row!=b.row)
-        return a.row<b.row;
-    else
-        return a.col<b.col;
-    }
 
-
-void Oper::add_matr(void)
-    {
-    if(last==NULL)
-        {
-        first=new ms_list;
-        first->next=NULL;
-        first->m=new Matrix_COO(dim);
-        last=first;
-        }
-    else
-        {
-        last->next=new ms_list;
-        last=last->next;
-        last->next=NULL;
-        last->m=new Matrix_COO(dim);
-        }
-    num++;
-    }
-
-Matrix_COO & Oper::operator [](const unsigned int &in)
-    {
-    if(in>=num)
-        {
-        while(in>=num)
-            {
-            add_matr();
-            }
-        return *(last->m);
-        }
-    else
-        {
-        unsigned int i=0;
-        teck=first;
-        while(in!=i)
-            {
-            teck=teck->next;
-            i++;
-            }
-        return *(teck->m);
-        }
-    }
-
-Oper::~Oper()
-    {
-    while(first!=NULL)
-        {
-        teck=first;
-        first=first->next;
-        delete teck->m;
-        delete teck;
-        }
-    }
 #endif

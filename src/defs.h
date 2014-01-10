@@ -6,8 +6,4 @@
 	#else
 		#define TYPE float
 	#endif
-    #include <vector>
-    #include <map>
-    #include <iterator>
-    #include <iostream>
 #endif
